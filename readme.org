@@ -1,0 +1,60 @@
+* pgcryptgo
+Decrypt postgres data from go.
+
+* Setup
+  #+BEGIN_SRC text
+    apt install postgresql-client
+    docker pull postgresql
+  #+END_SRC
+
+  Running temporary database:
+  #+BEGIN_SRC text
+    docker run --rm -it -p 5432:5432 -e POSTGRES_PASSWORD="password" postgres
+  #+END_SRC
+
+  Connecting to database and enabling =pgcrypto=:
+  #+BEGIN_SRC text
+    psql -h localhost -U postgres
+    postgres=# create extension pgcrypto;
+  #+END_SRC
+
+* Using the pgcrypto postgres module
+  Encryption:
+  #+BEGIN_SRC text
+    postgres=# select pgp_sym_encrypt('hello', 'abc123', 'cipher-algo=aes256');
+                                                                 pgp_sym_encrypt
+    --------------------------------------------------------------------------------------------------------------------------------------------------
+     \xc30d04090302f2d3adae91691b9d63d23601f19504758a7fce829101a421c13444a5d3b0a404895fd6936611770787ea478c33b155ceacaaeb91c26df557021dd03de968d05dd4
+    (1 row)
+  #+END_SRC
+
+  Decryption: (the cipher algorithm is embedded within the encrypted message)
+  #+BEGIN_SRC text
+    postgres=# select pgp_sym_decrypt('\xc30d04090302f2d3adae91691b9d63d23601f19504758a7fce829101a421c13444a5d3b0a404895fd6936611770787ea478c33b155ceacaaeb91c26df557021dd03de968d05dd4', 'abc123');
+     pgp_sym_decrypt
+    -----------------
+     hello
+    (1 row)
+  #+END_SRC
+
+* Decryption from go
+  #+BEGIN_SRC text
+    // main.go
+    func main() {
+            key := []byte("abc123")
+            body := "c30d04090302f2d3adae91691b9d63d23601f19504758a7fce829101a421c13444a5d3b0a404895fd6936611770787ea478c33b155ceacaaeb91c26df557021dd03de968d05dd4"
+            b, _ := hex.DecodeString(body)
+
+            msg, err := decrypt(b, key)
+            if err != nil {
+                    log.Fatal(err)
+            }
+
+            fmt.Println(msg)
+    }
+  #+END_SRC
+
+  #+BEGIN_SRC text
+    go run main.go
+    hello
+  #+END_SRC
